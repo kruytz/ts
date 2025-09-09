@@ -28,7 +28,7 @@ async function runSimulation() {
         console.log(`Simulation finished in ${duration} seconds.`);
         
         const lines = csvData.trim().split('\n');
-        lines.shift(); 
+        lines.shift();
         const finalX = [];
         const finalZ = [];
 
@@ -62,12 +62,12 @@ function createKDEHeatmap(xData, zData, duration) {
             xData.map((x, i) => [x, zData[i]])
         );
 
-        const n = 120; 
-        const m = 60;  
+        const n = 120;
+        const m = 60;
         const xGrid = [], yGrid = [], zGrid = [];
 
-        for (let i = 0; i < n; i++) xGrid.push(9 + (i * 9) / (n - 1)); // X from 9 to 18
-        for (let j = 0; j < m; j++) yGrid.push(-4.5 + (j * 9) / (m - 1)); // Y from -4.5 to 4.5
+        for (let i = 0; i < n; i++) xGrid.push(9 + (i * 9) / (n - 1));
+        for (let j = 0; j < m; j++) yGrid.push(-4.5 + (j * 9) / (m - 1));
 
         for (let j = 0; j < m; j++) {
             const row = [];
