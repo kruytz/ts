@@ -58,6 +58,7 @@ async function runSimulation() {
 
 function createKDEHeatmap(xData, zData, duration) {
     setTimeout(() => {
+        const science = window.science;
         const kde = science.stats.kde().sample(
             xData.map((x, i) => [x, zData[i]])
         );
