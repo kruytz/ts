@@ -8,18 +8,15 @@ const plotDiv = document.getElementById('plot');
 runButton.addEventListener('click', runSimulation);
 
 async function runSimulation() {
-    // 1. Setup UI for loading state
     runButton.disabled = true;
     runButton.textContent = 'Simulating...';
     statusDiv.textContent = 'Initializing WebAssembly module... Please wait.';
-    plotDiv.innerHTML = ''; // Clear previous plot
+    plotDiv.innerHTML = '';
 
     try {
-        // 2. Initialize the WebAssembly Module
         const Module = await VolleyballSimModule();
         statusDiv.textContent = 'Module loaded. Starting simulations... This may take a moment.';
 
-        // 3. Run the C++ simulation function
         const numSims = parseInt(numSimsInput.value, 10);
         console.log(`Running ${numSims} simulations...`);
 
@@ -30,9 +27,8 @@ async function runSimulation() {
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         console.log(`Simulation finished in ${duration} seconds.`);
         
-        // 4. Parse the CSV data
         const lines = csvData.trim().split('\n');
-        lines.shift(); // Remove header
+        lines.shift(); 
         const finalX = [];
         const finalZ = [];
 
@@ -45,8 +41,7 @@ async function runSimulation() {
         const validServesCount = finalX.length;
         statusDiv.innerHTML = `Found ${validServesCount} valid serves in ${duration} seconds. Calculating heatmap...`;
 
-        // 5. Plot the heatmap using the advanced KDE function
-        if (validServesCount > 5) { // KDE needs a few points to work well
+        if (validServesCount > 5) {
             createKDEHeatmap(finalX, finalZ, duration);
         } else {
             statusDiv.textContent = 'Not enough valid serves found to generate a heatmap. Try increasing the simulation count.';
@@ -56,29 +51,24 @@ async function runSimulation() {
         console.error("Error during simulation:", error);
         statusDiv.textContent = 'An error occurred. Check the console for details.';
     } finally {
-        // 6. Reset UI
         runButton.disabled = false;
         runButton.textContent = 'Run Simulation';
     }
 }
 
 function createKDEHeatmap(xData, zData, duration) {
-    // Use a timeout to allow the UI to update with the "Calculating..." message
     setTimeout(() => {
-        // --- KDE CALCULATION using science.js ---
         const kde = science.stats.kde().sample(
             xData.map((x, i) => [x, zData[i]])
         );
 
-        // Define the grid where we will calculate the density
-        const n = 120; // Resolution for X-axis
-        const m = 60;  // Resolution for Y-axis
+        const n = 120; 
+        const m = 60;  
         const xGrid = [], yGrid = [], zGrid = [];
 
         for (let i = 0; i < n; i++) xGrid.push(9 + (i * 9) / (n - 1)); // X from 9 to 18
         for (let j = 0; j < m; j++) yGrid.push(-4.5 + (j * 9) / (m - 1)); // Y from -4.5 to 4.5
 
-        // Calculate the density at each point on the grid
         for (let j = 0; j < m; j++) {
             const row = [];
             for (let i = 0; i < n; i++) {
@@ -87,7 +77,6 @@ function createKDEHeatmap(xData, zData, duration) {
             zGrid.push(row);
         }
         
-        // --- PLOTTING ---
         const trace = {
             x: xGrid,
             y: yGrid,
@@ -116,5 +105,5 @@ function createKDEHeatmap(xData, zData, duration) {
         Plotly.newPlot('plot', [trace], layout, {responsive: true});
         
         statusDiv.innerHTML = `<strong>Simulation Complete!</strong> Found ${xData.length} valid serves in ${duration} seconds.`;
-    }, 20); // 20ms timeout to ensure UI updates
+    }, 20);
 }
