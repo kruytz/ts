@@ -77,13 +77,13 @@ namespace constants {
     const double DIAMETER = 0.207; //OG: 0.21
     const double RADIUS = DIAMETER / 2.0;
     const double AREA = PI * RADIUS * RADIUS;
-    const double GRAVITY = 9.80665;
-    const double AIR_DENSITY_RHO = 1.225;
-    const double AIR_VISCOSITY_MU = 1.81e-5;
+    const double GRAVITY = 9.80665; //OG: 9.80665
+    const double AIR_DENSITY_RHO = 1.1644; //OG: 1.1644
+    const double AIR_VISCOSITY_MU = 1.872e-5; //OG: 1.872e-5
     const double DT = 0.001; //timestep, OG: 0.001, optimal : 0.001 to 0.0001, precise calc: 0.00001
-    const double NET_X_POSITION = 9.0;
-    const double NET_HEIGHT = 2.43;
-    const double COURT_LENGTH = 18.0;
+    const double NET_X_POSITION = 9.0; //OG: 9.0
+    const double NET_HEIGHT = 2.43; //OG:2.43
+    const double COURT_LENGTH = 18.0; //OG:18.0
     const double COURT_WIDTH = 9.0;
     const double COR_NET_NORMAL = 0.15; // OG: 0.15, For velocity component perpendicular to the net (x)
     const double COR_NET_TANGENT = 0.5; // OG: 0.5, For velocity components parallel to the net (y, z)
@@ -130,7 +130,6 @@ Vector3D calculate_acceleration(const Vector3D& velocity, const Vector3D& angula
 
     double total_spin_rps = angular_velocity.magnitude() / (2.0 * PI);
     if (total_spin_rps <= constants::FLOAT_SERVE_RPS_THRESHOLD) {
-        // Generate two smoothly changing random values using Perlin noise
         double noise_val1 = pnoise.noise(time * constants::FLOAT_FORCE_FREQUENCY, 0, 0);
         double noise_val2 = pnoise.noise(0, time * constants::FLOAT_FORCE_FREQUENCY, 0);
         
@@ -222,7 +221,7 @@ SimulationResult run_simulation(const InitialConditions& initial, const PerlinNo
 }
 
 int main(){
-    const int NUM_SIMULATIONS = 10000;
+    const int NUM_SIMULATIONS = 50000;
     static long long int x = pow(10, floor(log10(NUM_SIMULATIONS)/1.5));
 
     std::random_device rd;
@@ -238,12 +237,12 @@ int main(){
     std::string filename = "valid_serves.csv"; // writing to file
     outputFile.open(filename);
     if (!outputFile.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
+        std::cerr << "Error: Could not open file " << filename << " for writing." << "\n";
         return 1;
     }
     outputFile << "start_z,speed_mps,angle_deg,topspin_rps,slice_rps,final_x,final_y,final_z\n";
     int valid_serve_count = 0;
-    std::cout << "Running " << NUM_SIMULATIONS << " simulations (with float serve physics)..." << std::endl;
+    std::cout << "Running " << NUM_SIMULATIONS << " simulations (with float serve physics)..." << "\n";
 
     for (int i = 0; i < NUM_SIMULATIONS; ++i) {
         PerlinNoise pnoise(rd());

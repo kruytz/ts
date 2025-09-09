@@ -1,117 +1,35 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volleyball Serve Simulation & Heatmap</title>
+    <title>Volleyball Serve Heatmap Simulator</title>
+    <!-- Plotly.js from CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1>Volleyball Serve Simulation & Heatmap</h1>
-            <p class="subtitle">A physics-based simulation in C++ with data visualization in Python</p>
-        </div>
+        <h1>Volleyball Serve Heatmap Simulator</h1>
+        <p>Run a physics-based simulation in your browser to generate a heatmap of valid volleyball serves.</p>
     </header>
 
-    <main class="container">
-        <section id="overview">
-            <h2>Project Overview</h2>
-            <p>This project simulates the trajectory of volleyball serves using a detailed physics model written in C++. It accounts for gravity, air drag (using Reynolds number), the Magnus effect for spin, and even complex "float" serve aerodynamics using Perlin noise. The simulation generates data for thousands of valid serves, which is then visualized as a high-density heatmap using a Python script with Matplotlib and Numba for performance.</p>
-        </section>
-
-        <section id="results">
-            <h2>Sample Result</h2>
-            <p>Below is a sample heatmap generated from 10,000 valid serves. The color intensity represents the density of serve landings on the opponent's court.</p>
-            <div class="image-container">
-                <img src="sample_heatmap.png" alt="Sample heatmap of volleyball serve landings">
-            </div>
-        </section>
-
-        <section id="getting-started">
-            <h2>How to Run This Project</h2>
-            <p>Follow these steps to generate your own data and heatmap.</p>
-            <div class="step">
-                <h3>Step 1: Run the C++ Simulation</h3>
-                <p>First, compile and run the C++ simulation. This will generate the <code>valid_serves.csv</code> file containing the landing coordinates of all successful serves.</p>
-                <pre><code>g++ -O3 -std=c++17 dist3test.cpp -o simulate_serves
-./simulate_serves</code></pre>
-            </div>
-            <div class="step">
-                <h3>Step 2: Set Up the Python Environment</h3>
-                <p>Next, install the required Python libraries. The script uses PyArrow for fast CSV/Parquet reading and Numba for JIT-compiling the Kernel Density Estimation (KDE) function for incredible speed.</p>
-                <pre><code>pip install pandas matplotlib numpy numba pyarrow</code></pre>
-            </div>
-            <div class="step">
-                <h3>Step 3: Generate the Heatmap</h3>
-                <p>Finally, run the Python script. It will first convert the CSV to the more efficient Parquet format and then prompt you to choose a visualization method.</p>
-                <pre><code>python heatmapdist_stablev2b.py</code></pre>
-                <p>You will be asked to choose between a fast 'Smoothed Histogram' and a more computationally intensive but accurate 'Numba-accelerated KDE'.</p>
-            </div>
-        </section>
-
-        <section id="code">
-            <h2>The Code</h2>
-            <div class="code-block">
-                <h3>C++ Simulation (dist3test.cpp)</h3>
-                <p>This program models the flight of a volleyball, applying aerodynamic forces. The use of Perlin noise for float serves introduces realistic, unpredictable movement.</p>
-                <pre><code class="language-cpp">// Key snippet: Calculating aerodynamic forces
-Vector3D calculate_acceleration(...) {
-    Vector3D force_gravity = {0.0, ...};
-    double speed = velocity.magnitude();
-    double cd = calculate_drag_coefficient(speed);
-    Vector3D force_drag = velocity * (...);
-    Vector3D force_magnus = cross(angular_velocity, velocity) * (...);
-    
-    Vector3D net_force = force_gravity + force_drag + force_magnus;
-
-    double total_spin_rps = angular_velocity.magnitude() / (2.0 * PI);
-    if (total_spin_rps <= constants::FLOAT_SERVE_RPS_THRESHOLD) {
-        // Generate smoothly changing random values using Perlin noise
-        double noise_val1 = pnoise.noise(time * constants::FLOAT_FORCE_FREQUENCY, 0, 0);
-        double noise_val2 = pnoise.noise(0, time * constants::FLOAT_FORCE_FREQUENCY, 0);
+    <main>
+        <div class="controls">
+            <label for="numSims">Number of Simulations:</label>
+            <input type="number" id="numSims" value="10000" min="100" max="200000" step="100">
+            <button id="runButton">Run Simulation</button>
+        </div>
         
-        // Create a wandering force vector perpendicular to the velocity
-        Vector3D random_direction = (...);
-        Vector3D force_float = random_direction * constants::FLOAT_FORCE_MAGNITUDE * (...);
+        <div id="status">Enter the number of simulations and click "Run".</div>
         
-        net_force = net_force + force_float;
-    }
-
-    return net_force / constants::MASS;
-}</code></pre>
-            </div>
-
-            <div class="code-block">
-                <h3>Python Visualization (heatmapdist_stablev2b.py)</h3>
-                <p>This script reads the simulation output and uses powerful libraries to create a visually intuitive heatmap of the data.</p>
-                <pre><code class="language-python"># Key snippet: Numba-accelerated Kernel Density Estimation
-@njit(parallel=True)
-def numba_kde(data_points, grid_points, bandwidth):
-    n_data, d = data_points.shape
-    n_grid, _ = grid_points.shape
-    density = np.zeros(n_grid)
-
-    # Parallel loop over grid points for massive speedup
-    for i in prange(n_grid):
-        diff = (grid_points[i] - data_points) / bandwidth
-        energy = np.sum(diff**2, axis=1) / 2.0
-        density[i] = np.sum(np.exp(-energy))
-    
-    norm_factor = n_data * np.prod(bandwidth) * (2 * np.pi)**(d / 2.0)
-    density /= norm_factor
-    return density</code></pre>
-            </div>
-        </section>
+        <div id="plot-container">
+            <div id="plot"></div>
+        </div>
     </main>
 
-    <footer>
-        <div class="container">
-            <p>Project created for demonstration. <a href="https://github.com/your-username/your-repo-name" target="_blank">View on GitHub</a></p>
-        </div>
-    </footer>
+    <!-- The type="module" is important for Wasm import -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
