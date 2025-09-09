@@ -1,4 +1,3 @@
-// script.js
 import VolleyballSimModule from './volleyball_sim.js';
 
 const runButton = document.getElementById('runButton');
@@ -9,15 +8,18 @@ const plotDiv = document.getElementById('plot');
 runButton.addEventListener('click', runSimulation);
 
 async function runSimulation() {
+    // 1. Setup UI for loading state
     runButton.disabled = true;
     runButton.textContent = 'Simulating...';
     statusDiv.textContent = 'Initializing WebAssembly module... Please wait.';
-    plotDiv.innerHTML = '';
+    plotDiv.innerHTML = ''; // Clear previous plot
 
     try {
+        // 2. Initialize the WebAssembly Module
         const Module = await VolleyballSimModule();
         statusDiv.textContent = 'Module loaded. Starting simulations... This may take a moment.';
 
+        // 3. Run the C++ simulation function
         const numSims = parseInt(numSimsInput.value, 10);
         console.log(`Running ${numSims} simulations...`);
 
@@ -27,10 +29,10 @@ async function runSimulation() {
         
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         console.log(`Simulation finished in ${duration} seconds.`);
-        statusDiv.textContent = `Processing results...`;
-
+        
+        // 4. Parse the CSV data
         const lines = csvData.trim().split('\n');
-        const headers = lines.shift().split(',');
+        lines.shift(); // Remove header
         const finalX = [];
         const finalZ = [];
 
@@ -41,12 +43,11 @@ async function runSimulation() {
         }
 
         const validServesCount = finalX.length;
-        statusDiv.textContent = `Found ${validServesCount} valid serves. Plotting...`;
-        console.log(`Found ${validServesCount} valid serves.`);
+        statusDiv.innerHTML = `Found ${validServesCount} valid serves in ${duration} seconds. Calculating heatmap...`;
 
-        if (validServesCount > 1) {
-            createHeatmap(finalX, finalZ);
-            statusDiv.innerHTML = `<strong>Simulation Complete!</strong> Found ${validServesCount} valid serves in ${duration} seconds.`;
+        // 5. Plot the heatmap using the advanced KDE function
+        if (validServesCount > 5) { // KDE needs a few points to work well
+            createKDEHeatmap(finalX, finalZ, duration);
         } else {
             statusDiv.textContent = 'Not enough valid serves found to generate a heatmap. Try increasing the simulation count.';
         }
@@ -55,46 +56,65 @@ async function runSimulation() {
         console.error("Error during simulation:", error);
         statusDiv.textContent = 'An error occurred. Check the console for details.';
     } finally {
+        // 6. Reset UI
         runButton.disabled = false;
         runButton.textContent = 'Run Simulation';
     }
 }
 
-function createHeatmap(xData, zData) {
-    const trace = {
-        x: xData,
-        y: zData,
-        type: 'histogram2dcontour',
-        colorscale: 'Inferno',
-        contours: {
-            coloring: 'heatmap',
-        },
-        zsmooth: 'best', 
-        hoverinfo: 'none'
-    };
-    
-    const layout = {
-        title: `Heatmap of ${xData.length} Valid Serve Landings`,
-        xaxis: {
-            title: 'Horizontal Distance from Serve Line (m)',
-            range: [-1, 19],
-            scaleanchor: "y",
-            scaleratio: 1,
-        },
-        yaxis: {
-            title: 'Sideways Distance from Center (m)',
-            range: [-5.5, 5.5],
-        },
-        shapes: [
-            {type: 'rect', x0: 9, y0: -4.5, x1: 18, y1: 4.5, line: {color: 'black', width: 2}},
-            {type: 'rect', x0: 0, y0: -4.5, x1: 9, y1: 4.5, line: {color: 'rgba(0,0,0,0.5)', width: 1}, fillcolor: 'rgba(230, 230, 230, 0.3)'},
-            {type: 'line', x0: 9, y0: -4.5, x1: 9, y1: 4.5, line: {color: 'black', width: 3}},
-            {type: 'line', x0: 12, y0: -4.5, x1: 12, y1: 4.5, line: {color: 'black', width: 1, dash: 'dash'}},
-            {type: 'line', x0: 6, y0: -4.5, x1: 6, y1: 4.5, line: {color: 'black', width: 1, dash: 'dash'}},
-        ],
-        autosize: true,
-        margin: { l: 60, r: 20, t: 40, b: 50 },
-    };
+function createKDEHeatmap(xData, zData, duration) {
+    // Use a timeout to allow the UI to update with the "Calculating..." message
+    setTimeout(() => {
+        // --- KDE CALCULATION using science.js ---
+        const kde = science.stats.kde().sample(
+            xData.map((x, i) => [x, zData[i]])
+        );
 
-    Plotly.newPlot('plot', [trace], layout, {responsive: true});
+        // Define the grid where we will calculate the density
+        const n = 120; // Resolution for X-axis
+        const m = 60;  // Resolution for Y-axis
+        const xGrid = [], yGrid = [], zGrid = [];
+
+        for (let i = 0; i < n; i++) xGrid.push(9 + (i * 9) / (n - 1)); // X from 9 to 18
+        for (let j = 0; j < m; j++) yGrid.push(-4.5 + (j * 9) / (m - 1)); // Y from -4.5 to 4.5
+
+        // Calculate the density at each point on the grid
+        for (let j = 0; j < m; j++) {
+            const row = [];
+            for (let i = 0; i < n; i++) {
+                row.push(kde([xGrid[i], yGrid[j]]));
+            }
+            zGrid.push(row);
+        }
+        
+        // --- PLOTTING ---
+        const trace = {
+            x: xGrid,
+            y: yGrid,
+            z: zGrid,
+            type: 'contour',
+            colorscale: 'Inferno',
+            contours: { coloring: 'heatmap' },
+            hoverinfo: 'none'
+        };
+
+        const layout = {
+            title: `Heatmap of ${xData.length} Valid Serves (High-Detail KDE)`,
+            xaxis: { title: 'Horizontal Distance from Serve Line (m)', range: [-1, 19], scaleanchor: "y", scaleratio: 1 },
+            yaxis: { title: 'Sideways Distance from Center (m)', range: [-5.5, 5.5] },
+            shapes: [
+                {type: 'rect', x0: 9, y0: -4.5, x1: 18, y1: 4.5, line: {color: 'black', width: 2}},
+                {type: 'rect', x0: 0, y0: -4.5, x1: 9, y1: 4.5, line: {color: 'rgba(0,0,0,0.5)', width: 1}, fillcolor: 'rgba(230, 230, 230, 0.3)'},
+                {type: 'line', x0: 9, y0: -4.5, x1: 9, y1: 4.5, line: {color: 'black', width: 3}},
+                {type: 'line', x0: 12, y0: -4.5, x1: 12, y1: 4.5, line: {color: 'black', width: 1, dash: 'dash'}},
+                {type: 'line', x0: 6, y0: -4.5, x1: 6, y1: 4.5, line: {color: 'black', width: 1, dash: 'dash'}},
+            ],
+            autosize: true,
+            margin: { l: 60, r: 20, t: 40, b: 50 },
+        };
+
+        Plotly.newPlot('plot', [trace], layout, {responsive: true});
+        
+        statusDiv.innerHTML = `<strong>Simulation Complete!</strong> Found ${xData.length} valid serves in ${duration} seconds.`;
+    }, 20); // 20ms timeout to ensure UI updates
 }
