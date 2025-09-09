@@ -1,4 +1,3 @@
-/* style.css */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
@@ -59,9 +58,9 @@ button:disabled {
     margin-bottom: 20px;
     font-style: italic;
     color: #555;
-    min-height: 1.6em; /* Prevent layout shift */
+    min-height: 1.6em;
 }
 #plot-container {
     width: 100%;
-    min-height: 500px; /* Give it a default size */
+    min-height: 500px;
 }
